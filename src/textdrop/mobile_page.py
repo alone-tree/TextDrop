@@ -18,19 +18,27 @@ def render_mobile_page(language: str) -> str:
   <title>{title}</title>
   <style>
     * {{ box-sizing: border-box; }}
+    :root {{
+      --keyboard-inset: 0px;
+      --footer-height: 76px;
+      --page-padding: 12px;
+      --bottom-space: calc(var(--page-padding) + env(safe-area-inset-bottom) + var(--keyboard-inset));
+    }}
     html, body {{ height: 100%; }}
     body {{
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: #15171a;
       background: #f6f7f9;
+      overflow: hidden;
     }}
     .app {{
-      min-height: 100%;
+      height: 100vh;
+      height: 100dvh;
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr;
       gap: 12px;
-      padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+      padding: max(var(--page-padding), env(safe-area-inset-top)) var(--page-padding) calc(var(--footer-height) + var(--bottom-space));
     }}
     .topbar {{
       display: grid;
@@ -53,8 +61,11 @@ def render_mobile_page(language: str) -> str:
     }}
     textarea {{
       width: 100%;
+      height: 100%;
       min-height: 0;
       resize: none;
+      -webkit-user-select: text;
+      user-select: text;
       border: 1px solid #d5d9df;
       border-radius: 8px;
       padding: 14px;
@@ -66,6 +77,13 @@ def render_mobile_page(language: str) -> str:
     textarea:focus {{
       border-color: #1f7aec;
       box-shadow: 0 0 0 3px rgba(31, 122, 236, 0.12);
+    }}
+    footer {{
+      position: fixed;
+      left: var(--page-padding);
+      right: var(--page-padding);
+      bottom: var(--bottom-space);
+      z-index: 10;
     }}
     .bottombar {{
       display: grid;
@@ -90,6 +108,7 @@ def render_mobile_page(language: str) -> str:
     }}
     .status.connected .dot {{ background: #1f9d55; }}
     .send {{
+      touch-action: manipulation;
       min-height: 52px;
       border: 0;
       border-radius: 8px;
@@ -116,7 +135,7 @@ def render_mobile_page(language: str) -> str:
       <div class="title">TextDrop</div>
       <button class="clear" id="clearButton" type="button"></button>
     </header>
-    <textarea id="textInput" spellcheck="false"></textarea>
+    <textarea id="textInput" name="text" rows="8"></textarea>
     <footer>
       <div class="message" id="message"></div>
       <div class="bottombar">
@@ -135,6 +154,7 @@ def render_mobile_page(language: str) -> str:
     const status = document.getElementById("status");
     const statusText = document.getElementById("statusText");
     const message = document.getElementById("message");
+    let isComposing = false;
 
     clearButton.textContent = labels.clear;
     sendButton.textContent = labels.send;
@@ -157,6 +177,27 @@ def render_mobile_page(language: str) -> str:
       }} finally {{
         clearTimeout(timer);
       }}
+    }}
+
+    function wait(ms) {{
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }}
+
+    function updateKeyboardInset() {{
+      if (!window.visualViewport) {{
+        return;
+      }}
+      const inset = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+      document.documentElement.style.setProperty("--keyboard-inset", `${{Math.round(inset)}}px`);
+    }}
+
+    async function readCommittedInput() {{
+      input.blur();
+      if (isComposing) {{
+        await wait(180);
+      }}
+      await wait(80);
+      return input.value;
     }}
 
     async function checkConnection() {{
@@ -182,10 +223,11 @@ def render_mobile_page(language: str) -> str:
           return;
         }}
 
+        const text = await readCommittedInput();
         const response = await fetchWithTimeout(`/api/send?token=${{encodeURIComponent(token)}}`, {{
           method: "POST",
           headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify({{ text: input.value }}),
+          body: JSON.stringify({{ text }}),
         }});
 
         if (response.ok) {{
@@ -216,10 +258,22 @@ def render_mobile_page(language: str) -> str:
       input.value = "";
       input.focus();
     }});
+    input.addEventListener("compositionstart", () => {{
+      isComposing = true;
+    }});
+    input.addEventListener("compositionend", () => {{
+      isComposing = false;
+    }});
     sendButton.addEventListener("click", sendText);
     setConnected(false);
     checkConnection();
     setInterval(checkConnection, 5000);
+    updateKeyboardInset();
+    window.addEventListener("resize", updateKeyboardInset);
+    if (window.visualViewport) {{
+      window.visualViewport.addEventListener("resize", updateKeyboardInset);
+      window.visualViewport.addEventListener("scroll", updateKeyboardInset);
+    }}
   </script>
 </body>
 </html>"""
