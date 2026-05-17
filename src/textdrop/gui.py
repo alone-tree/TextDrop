@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from .config import AppConfig, load_config, save_config
-from .constants import DEFAULT_PORT
+from .constants import AUTO_ENTER_OPTIONS, DEFAULT_PORT
 from .i18n import LANGUAGE_OPTIONS, tr
 from .network import AddressCandidate, choose_address, find_available_port, list_address_candidates
 from .paste import paste_text
@@ -65,12 +65,14 @@ class MainWindow(QMainWindow):
             ServerState(
                 get_token=self._get_token,
                 get_language=self._get_language,
+                get_auto_enter=self._get_auto_enter,
                 paste_text=paste_text,
             ),
         )
 
         self.status_value = QLabel()
         self.language_combo = QComboBox()
+        self.auto_enter_combo = QComboBox()
         self.address_combo = QComboBox()
         self.url_edit = QLineEdit()
         self.qr_label = QLabel()
@@ -109,12 +111,14 @@ class MainWindow(QMainWindow):
 
         self.status_label = QLabel()
         self.language_label = QLabel()
+        self.auto_enter_label = QLabel()
         self.address_choice_label = QLabel()
         self.access_url_label = QLabel()
         self.token_label = QLabel()
 
         form.addRow(self.status_label, self.status_value)
         form.addRow(self.language_label, self.language_combo)
+        form.addRow(self.auto_enter_label, self.auto_enter_combo)
         form.addRow(self.address_choice_label, self.address_combo)
 
         self.url_edit.setReadOnly(True)
@@ -133,12 +137,14 @@ class MainWindow(QMainWindow):
         root.addLayout(buttons)
 
         self._fill_language_combo()
+        self._fill_auto_enter_combo()
         self._fill_address_combo()
         self.setCentralWidget(central)
         self.resize(560, 620)
 
     def _connect_events(self) -> None:
         self.language_combo.currentIndexChanged.connect(self._on_language_changed)
+        self.auto_enter_combo.currentIndexChanged.connect(self._on_auto_enter_changed)
         self.address_combo.currentIndexChanged.connect(self._on_address_changed)
         self.copy_button.clicked.connect(self._copy_address)
         self.refresh_token_button.clicked.connect(self._confirm_refresh_token)
@@ -152,6 +158,16 @@ class MainWindow(QMainWindow):
         index = self.language_combo.findData(self.config.language)
         self.language_combo.setCurrentIndex(max(index, 0))
         self.language_combo.blockSignals(False)
+
+    def _fill_auto_enter_combo(self) -> None:
+        self.auto_enter_combo.blockSignals(True)
+        self.auto_enter_combo.clear()
+        language = self.config.language
+        for value, i18n_key in AUTO_ENTER_OPTIONS:
+            self.auto_enter_combo.addItem(tr(language, i18n_key), value)
+        index = self.auto_enter_combo.findData(self.config.auto_enter)
+        self.auto_enter_combo.setCurrentIndex(max(index, 0))
+        self.auto_enter_combo.blockSignals(False)
 
     def _fill_address_combo(self) -> None:
         self.address_combo.blockSignals(True)
@@ -174,6 +190,7 @@ class MainWindow(QMainWindow):
         self.address_choice_label.setText(f"{tr(language, 'address_choice_label')}:")
         self.access_url_label.setText(f"{tr(language, 'access_url_label')}:")
         self.token_label.setText(f"{tr(language, 'token_label')}:")
+        self.auto_enter_label.setText(f"{tr(language, 'auto_enter_label')}:")
         self.status_value.setText(tr(language, "status_running"))
         self.token_value.setText(tr(language, "token_enabled"))
         self.copy_button.setText(tr(language, "copy_address"))
@@ -200,6 +217,15 @@ class MainWindow(QMainWindow):
             self.config.language = language
             save_config(self.config)
         self._apply_language()
+        self._fill_auto_enter_combo()
+
+    def _on_auto_enter_changed(self) -> None:
+        auto_enter = self.auto_enter_combo.currentData()
+        if auto_enter is None:
+            return
+        with self._lock:
+            self.config.auto_enter = auto_enter
+            save_config(self.config)
 
     def _on_address_changed(self) -> None:
         address = self.address_combo.currentData()
@@ -240,6 +266,10 @@ class MainWindow(QMainWindow):
     def _get_language(self) -> str:
         with self._lock:
             return self.config.language
+
+    def _get_auto_enter(self) -> str:
+        with self._lock:
+            return self.config.auto_enter
 
 
 def run_gui() -> int:

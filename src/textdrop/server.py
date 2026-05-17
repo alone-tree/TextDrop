@@ -18,7 +18,8 @@ from .mobile_page import render_mobile_page
 class ServerState:
     get_token: Callable[[], str]
     get_language: Callable[[], str]
-    paste_text: Callable[[str], None]
+    get_auto_enter: Callable[[], str]
+    paste_text: Callable[[str, str], None]
 
 
 def create_app(state: ServerState) -> FastAPI:
@@ -52,7 +53,8 @@ def create_app(state: ServerState) -> FastAPI:
             return JSONResponse({"ok": False, "error": "too_large"}, status_code=413)
 
         try:
-            await asyncio.to_thread(state.paste_text, text)
+            auto_enter = state.get_auto_enter()
+            await asyncio.to_thread(state.paste_text, text, auto_enter)
         except Exception:
             return JSONResponse({"ok": False, "error": "paste_failed"}, status_code=500)
 

@@ -14,6 +14,7 @@ class AppConfig:
     token: str
     language: str = "zh"
     selected_address: str | None = None
+    auto_enter: str = ""
 
 
 def config_path() -> Path:
@@ -33,7 +34,8 @@ def load_config() -> AppConfig:
     token = data.get("token") or generate_token()
     language = data.get("language") if data.get("language") in {"zh", "en"} else "zh"
     selected_address = data.get("selected_address")
-    return AppConfig(token=token, language=language, selected_address=selected_address)
+    auto_enter = data.get("auto_enter", "")
+    return AppConfig(token=token, language=language, selected_address=selected_address, auto_enter=auto_enter)
 
 
 def save_config(config: AppConfig) -> None:

@@ -29,6 +29,12 @@ TEXT = {
         "send_failed": "发送失败，请确认电脑端正在运行",
         "token_invalid": "连接已失效，请重新扫码",
         "too_large": "内容过长，请分段发送",
+        "auto_enter_label": "粘贴后按键",
+        "auto_enter_none": "不自动按键",
+        "auto_enter_enter": "Enter",
+        "auto_enter_ctrl_enter": "Ctrl + Enter",
+        "auto_enter_shift_enter": "Shift + Enter",
+        "auto_enter_alt_enter": "Alt + Enter",
     },
     "en": {
         "window_title": "TextDrop",
@@ -55,6 +61,12 @@ TEXT = {
         "send_failed": "Send failed. Check that TextDrop is running on the computer.",
         "token_invalid": "Connection expired. Scan the QR code again.",
         "too_large": "Text is too long. Send it in smaller parts.",
+        "auto_enter_label": "Auto key after paste",
+        "auto_enter_none": "No auto key",
+        "auto_enter_enter": "Enter",
+        "auto_enter_ctrl_enter": "Ctrl + Enter",
+        "auto_enter_shift_enter": "Shift + Enter",
+        "auto_enter_alt_enter": "Alt + Enter",
     },
 }
 
