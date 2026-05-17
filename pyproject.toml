@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "textdrop"
+version = "0.1.0"
+description = "Send text from a phone browser to the current Windows cursor position."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6",
+    "fastapi",
+    "uvicorn",
+    "qrcode",
+    "pillow",
+    "psutil",
+    "pyperclip",
+    "pyautogui",
+    "pyinstaller",
+]
+
+[project.scripts]
+textdrop = "textdrop.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

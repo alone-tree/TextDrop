@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import threading
+from dataclasses import dataclass
+from typing import Callable
+
+import uvicorn
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from .constants import MAX_TEXT_BYTES
+from .mobile_page import render_mobile_page
+
+
+@dataclass
+class ServerState:
+    get_token: Callable[[], str]
+    get_language: Callable[[], str]
+    paste_text: Callable[[str], None]
+
+
+def create_app(state: ServerState) -> FastAPI:
+    app = FastAPI()
+
+    @app.get("/", response_class=HTMLResponse)
+    async def index() -> str:
+        return render_mobile_page(state.get_language())
+
+    @app.get("/api/health")
+    async def health(token: str = Query(default="")) -> JSONResponse:
+        if token != state.get_token():
+            return JSONResponse({"ok": False, "error": "token_invalid"}, status_code=403)
+        return JSONResponse({"ok": True, "language": state.get_language()})
+
+    @app.post("/api/send")
+    async def send(request: Request, token: str = Query(default="")) -> JSONResponse:
+        if token != state.get_token():
+            return JSONResponse({"ok": False, "error": "token_invalid"}, status_code=403)
+
+        raw = await request.body()
+        try:
+            payload = json.loads(raw.decode("utf-8")) if raw else {"text": ""}
+        except json.JSONDecodeError:
+            return JSONResponse({"ok": False, "error": "bad_request"}, status_code=400)
+
+        text = payload.get("text", "")
+        if not isinstance(text, str):
+            return JSONResponse({"ok": False, "error": "bad_request"}, status_code=400)
+        if len(text.encode("utf-8")) > MAX_TEXT_BYTES:
+            return JSONResponse({"ok": False, "error": "too_large"}, status_code=413)
+
+        try:
+            await asyncio.to_thread(state.paste_text, text)
+        except Exception:
+            return JSONResponse({"ok": False, "error": "paste_failed"}, status_code=500)
+
+        return JSONResponse({"ok": True})
+
+    return app
+
+
+class LocalServer:
+    def __init__(self, port: int, state: ServerState):
+        self.port = port
+        self._server = uvicorn.Server(
+            uvicorn.Config(
+                create_app(state),
+                host="0.0.0.0",
+                port=port,
+                log_level="warning",
+                access_log=False,
+            )
+        )
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._server.run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._server.should_exit = True
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=3)
+
