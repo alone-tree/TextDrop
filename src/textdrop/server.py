@@ -71,6 +71,7 @@ class LocalServer:
                 port=port,
                 log_level="warning",
                 access_log=False,
+                log_config=None,
             )
         )
         self._thread: threading.Thread | None = None
@@ -83,4 +84,3 @@ class LocalServer:
         self._server.should_exit = True
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=3)
-

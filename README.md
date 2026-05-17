@@ -21,22 +21,28 @@ python -m pip install -e .
 python -m textdrop
 ```
 
-## 打包便携版 exe
+## 打包便携版 zip
 
 ```powershell
 .\scripts\build.ps1
 ```
 
-打包产物会生成在 `dist\TextDrop.exe`。
+打包产物会生成：
+
+- `dist\TextDrop-v0.1-windows\TextDrop\TextDrop.exe`
+- `dist\TextDrop-v0.1-windows.zip`
+
+发布时优先使用 zip。用户解压后运行文件夹里的 `TextDrop.exe`，不要把 `TextDrop.exe` 单独移动出来，否则依赖文件缺失会导致程序无法运行。
 
 ## 使用说明
 
-1. 在 Windows 电脑上启动 TextDrop。
-2. 首次使用如果 Windows 防火墙弹出提示，请允许专用网络访问。
-3. 用手机扫描 Windows 主界面中的二维码。
-4. 在手机页面输入文本。
-5. 在电脑上点击目标输入框，让光标停在要输入的位置。
-6. 点击手机页面底部的“发送到电脑”。
+1. 解压 `TextDrop-v0.1-windows.zip`。
+2. 在解压后的 `TextDrop` 文件夹里启动 `TextDrop.exe`。
+3. 首次使用如果 Windows 防火墙弹出提示，请允许专用网络访问。
+4. 用手机扫描 Windows 主界面中的二维码。
+5. 在手机页面输入文本。
+6. 在电脑上点击目标输入框，让光标停在要输入的位置。
+7. 点击手机页面底部的“发送到电脑”。
 
 如果电脑同时开启 VPN、系统代理或虚拟网卡，手机可能无法访问自动选择的地址。此时请在 Windows 主界面的地址下拉框里切换到与手机处于同一网络的地址，然后重新扫码。
 
@@ -49,4 +55,3 @@ python -m textdrop
 ```
 
 配置包含 Token、语言设置和最近选择的地址。刷新 Token 后旧二维码和旧链接会失效，需要重新扫码。
-
