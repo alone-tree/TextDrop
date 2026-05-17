@@ -22,6 +22,7 @@
 - 粘贴行为：看 `src/textdrop/paste.py`
 - 文案和语言：看 `src/textdrop/i18n.py`
 - 打包发布：看 `scripts/build.ps1` 和 `README.md`
+- 应用图标：看 `assets/app_icon.png` 和 `assets/app_icon.ico`
 
 先定位，再改代码；不要一上来重构。
 
@@ -70,4 +71,4 @@ python -m compileall src
 - 手机浏览器的键盘、语音输入和 textarea 组合行为很脆弱，少加属性、少拦截事件。
 - 地址自动选择只能做启发式判断，多网卡/VPN/虚拟网卡场景需要给用户兜底。
 - `TextDrop.exe` 如果依赖同目录资源，不要让用户单独移动 exe。
-
+- PyInstaller 图标需要 `.ico`。如果替换图标，优先从透明 PNG 生成多尺寸 ico，再更新打包脚本。

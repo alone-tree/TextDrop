@@ -3,9 +3,10 @@ from __future__ import annotations
 import multiprocessing
 import sys
 import threading
+from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent, QPixmap
+from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -28,6 +29,27 @@ from .paste import paste_text
 from .qr import make_qr_png
 from .server import LocalServer, ServerState
 from .tokens import generate_token
+
+
+APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1"
+
+
+def _asset_path(name: str) -> str:
+    base_dir = getattr(sys, "_MEIPASS", None)
+    if base_dir:
+        return str(Path(base_dir) / "assets" / name)
+    return str(Path(__file__).resolve().parents[2] / "assets" / name)
+
+
+def _set_windows_app_id() -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+    except Exception:
+        pass
 
 
 class MainWindow(QMainWindow):
@@ -146,6 +168,7 @@ class MainWindow(QMainWindow):
     def _apply_language(self) -> None:
         language = self.config.language
         self.setWindowTitle(tr(language, "window_title"))
+        self.setWindowIcon(QIcon(_asset_path("app_icon.ico")))
         self.status_label.setText(f"{tr(language, 'status_label')}:")
         self.language_label.setText(f"{tr(language, 'language_label')}:")
         self.address_choice_label.setText(f"{tr(language, 'address_choice_label')}:")
@@ -221,8 +244,9 @@ class MainWindow(QMainWindow):
 
 def run_gui() -> int:
     multiprocessing.freeze_support()
+    _set_windows_app_id()
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(_asset_path("app_icon.ico")))
     window = MainWindow()
     window.show()
     return app.exec()
-

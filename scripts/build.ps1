@@ -17,6 +17,8 @@ python -m PyInstaller `
   --onedir `
   --windowed `
   --clean `
+  --icon assets\app_icon.ico `
+  --add-data "assets;assets" `
   --distpath $releaseDir `
   --workpath build `
   --paths src `
