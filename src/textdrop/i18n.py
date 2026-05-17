@@ -50,7 +50,7 @@ TEXT = {
         "send": "Send to computer",
         "sending": "Sending...",
         "connected": "Connected",
-        "disconnected": "Disconnected",
+        "disconnected": "Offline",
         "placeholder": "Type text here...",
         "send_failed": "Send failed. Check that TextDrop is running on the computer.",
         "token_invalid": "Connection expired. Scan the QR code again.",
@@ -82,4 +82,3 @@ def mobile_labels(language: str | None) -> dict[str, str]:
         "too_large",
     ]
     return {key: TEXT[lang][key] for key in keys}
-

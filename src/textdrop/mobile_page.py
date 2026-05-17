@@ -41,18 +41,22 @@ def render_mobile_page(language: str) -> str:
       padding: max(var(--page-padding), env(safe-area-inset-top)) var(--page-padding) calc(var(--footer-height) + var(--bottom-space));
     }}
     .topbar {{
-      display: grid;
-      grid-template-columns: 74px 1fr 74px;
+      position: relative;
+      display: flex;
       align-items: center;
+      justify-content: space-between;
       min-height: 44px;
     }}
     .title {{
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
       text-align: center;
       font-size: 20px;
       font-weight: 700;
+      pointer-events: none;
     }}
     .clear {{
-      justify-self: end;
       border: 0;
       background: transparent;
       color: #72777f;
@@ -85,19 +89,21 @@ def render_mobile_page(language: str) -> str:
       bottom: var(--bottom-space);
       z-index: 10;
     }}
-    .bottombar {{
-      display: grid;
-      grid-template-columns: minmax(96px, 28%) 1fr;
-      gap: 10px;
-      align-items: stretch;
-    }}
     .status {{
       display: flex;
       align-items: center;
       gap: 8px;
-      min-height: 52px;
+      min-height: 44px;
       font-size: 14px;
       color: #4b515a;
+      overflow: hidden;
+      white-space: nowrap;
+      min-width: 0;
+      max-width: 38%;
+    }}
+    .status-text {{
+      overflow: hidden;
+      text-overflow: ellipsis;
     }}
     .dot {{
       width: 10px;
@@ -110,6 +116,7 @@ def render_mobile_page(language: str) -> str:
     .send {{
       touch-action: manipulation;
       min-height: 52px;
+      width: 100%;
       border: 0;
       border-radius: 8px;
       background: #1f7aec;
@@ -131,17 +138,14 @@ def render_mobile_page(language: str) -> str:
 <body>
   <main class="app">
     <header class="topbar">
-      <span></span>
+      <div class="status" id="status"><span class="dot"></span><span class="status-text" id="statusText"></span></div>
       <div class="title">TextDrop</div>
       <button class="clear" id="clearButton" type="button"></button>
     </header>
     <textarea id="textInput" name="text" rows="8"></textarea>
     <footer>
       <div class="message" id="message"></div>
-      <div class="bottombar">
-        <div class="status" id="status"><span class="dot"></span><span id="statusText"></span></div>
-        <button class="send" id="sendButton" type="button"></button>
-      </div>
+      <button class="send" id="sendButton" type="button"></button>
     </footer>
   </main>
   <script>
