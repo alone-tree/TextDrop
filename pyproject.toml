@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "textdrop"
-version = "0.1.0"
+version = "0.1.2"
 description = "Send text from a phone browser to the current Windows cursor position."
 readme = "README.md"
 requires-python = ">=3.11"
