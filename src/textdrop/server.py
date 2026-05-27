@@ -35,6 +35,7 @@ class ServerState:
     get_language: Callable[[], str]
     get_auto_enter: Callable[[], str]
     paste_text: Callable[[str, str], None]
+    mark_client_connected: Callable[[], None]
 
 
 def create_app(state: ServerState) -> FastAPI:
@@ -48,12 +49,14 @@ def create_app(state: ServerState) -> FastAPI:
     async def health(token: str = Query(default="")) -> JSONResponse:
         if token != state.get_token():
             return JSONResponse({"ok": False, "error": "token_invalid"}, status_code=403)
+        state.mark_client_connected()
         return JSONResponse({"ok": True, "language": state.get_language()})
 
     @app.post("/api/send")
     async def send(request: Request, token: str = Query(default="")) -> JSONResponse:
         if token != state.get_token():
             return JSONResponse({"ok": False, "error": "token_invalid"}, status_code=403)
+        state.mark_client_connected()
 
         raw = await request.body()
         try:

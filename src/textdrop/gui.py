@@ -18,6 +18,7 @@ from __future__ import annotations
 import multiprocessing
 import sys
 import threading
+import time
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
@@ -48,6 +49,7 @@ from .tokens import generate_token
 
 APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1"
 NETWORK_CHECK_INTERVAL_MS = 3000
+CLIENT_CONNECTED_TTL_SECONDS = 12
 
 
 def _asset_path(name: str) -> str:
@@ -72,6 +74,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._lock = threading.RLock()
+        self._last_client_seen: float | None = None
         self.config: AppConfig = load_config()
         self.candidates = list_address_candidates()
         self.selected_address = choose_address(self.candidates, self.config.selected_address)
@@ -81,6 +84,7 @@ class MainWindow(QMainWindow):
             get_language=self._get_language,
             get_auto_enter=self._get_auto_enter,
             paste_text=paste_text,
+            mark_client_connected=self._mark_client_connected,
         )
         self.server = LocalServer(self.port, self.server_state)
 
@@ -106,6 +110,7 @@ class MainWindow(QMainWindow):
         self._save_selected_address()
         self._apply_language()
         self._refresh_address_view()
+        self._refresh_connection_status()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.network_timer.stop()
@@ -215,11 +220,11 @@ class MainWindow(QMainWindow):
         self.access_url_label.setText(f"{tr(language, 'access_url_label')}:")
         self.token_label.setText(f"{tr(language, 'token_label')}:")
         self.auto_enter_label.setText(f"{tr(language, 'auto_enter_label')}:")
-        self.status_value.setText(tr(language, "status_running"))
         self.token_value.setText(tr(language, "token_enabled"))
         self.copy_button.setText(tr(language, "copy_address"))
         self.refresh_token_button.setText(tr(language, "refresh_token"))
         self.exit_button.setText(tr(language, "exit"))
+        self._refresh_connection_status()
 
     def _access_url(self) -> str:
         return f"http://{self.selected_address}:{self.port}/?token={self.config.token}"
@@ -235,6 +240,7 @@ class MainWindow(QMainWindow):
 
     def _check_network_state(self) -> None:
         if not self.server.is_running():
+            self._clear_client_connection()
             self.port = find_available_port(DEFAULT_PORT)
             self.server = LocalServer(self.port, self.server_state)
             self.server.start()
@@ -247,6 +253,7 @@ class MainWindow(QMainWindow):
             if self._candidate_addresses(candidates) != self._candidate_addresses(self.candidates):
                 self.candidates = candidates
                 self._fill_address_combo()
+            self._refresh_connection_status()
             return
 
         old_address = self.selected_address
@@ -256,8 +263,10 @@ class MainWindow(QMainWindow):
             return
 
         self._fill_address_combo()
+        self._clear_client_connection()
         self._save_selected_address()
         self._refresh_address_view()
+        self._refresh_connection_status()
         self._show_notice("address_refreshed")
 
     def _candidate_addresses(self, candidates: list[AddressCandidate]) -> list[str]:
@@ -265,6 +274,27 @@ class MainWindow(QMainWindow):
 
     def _show_notice(self, key: str) -> None:
         self.notice_label.setText(tr(self.config.language, key))
+
+    def _mark_client_connected(self) -> None:
+        with self._lock:
+            self._last_client_seen = time.monotonic()
+
+    def _clear_client_connection(self) -> None:
+        with self._lock:
+            self._last_client_seen = None
+
+    def _is_client_connected(self) -> bool:
+        with self._lock:
+            last_seen = self._last_client_seen
+        return last_seen is not None and time.monotonic() - last_seen <= CLIENT_CONNECTED_TTL_SECONDS
+
+    def _refresh_connection_status(self) -> None:
+        if self._is_client_connected():
+            self.status_value.setText(tr(self.config.language, "status_connected"))
+            self.status_value.setStyleSheet("color: #1f9d55; font-weight: 600;")
+        else:
+            self.status_value.setText(tr(self.config.language, "status_disconnected"))
+            self.status_value.setStyleSheet("color: #d33f49; font-weight: 600;")
 
     def _on_language_changed(self) -> None:
         language = self.language_combo.currentData()
@@ -289,8 +319,10 @@ class MainWindow(QMainWindow):
         if not address:
             return
         self.selected_address = address
+        self._clear_client_connection()
         self._save_selected_address()
         self._refresh_address_view()
+        self._refresh_connection_status()
 
     def _copy_address(self) -> None:
         QApplication.clipboard().setText(self._access_url())
@@ -308,8 +340,10 @@ class MainWindow(QMainWindow):
             return
         with self._lock:
             self.config.token = generate_token()
+            self._last_client_seen = None
             save_config(self.config)
         self._refresh_address_view()
+        self._refresh_connection_status()
 
     def _save_selected_address(self) -> None:
         with self._lock:
