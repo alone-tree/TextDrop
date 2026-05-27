@@ -128,19 +128,39 @@ def render_mobile_page(language: str) -> str:
       flex: 0 0 auto;
     }}
     .status.connected .dot {{ background: #1f9d55; }}
-    .send {{
+    .actions {{
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }}
+    .action {{
       touch-action: manipulation;
       min-height: 52px;
       width: 100%;
-      border: 0;
       border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 0 8px;
+      white-space: normal;
+      line-height: 1.15;
+    }}
+    .drop-send {{
+      border: 0;
       background: #1f7aec;
       color: #ffffff;
-      font-size: 18px;
-      font-weight: 700;
     }}
-    .send:disabled {{
+    .drop-only {{
+      border: 1px solid #b7cff5;
+      background: #eaf3ff;
+      color: #185abc;
+    }}
+    .drop-send:disabled {{
       background: #8db9f2;
+    }}
+    .drop-only:disabled {{
+      border-color: #d5d9df;
+      background: #eef1f5;
+      color: #7d8794;
     }}
     .message {{
       min-height: 20px;
@@ -160,7 +180,11 @@ def render_mobile_page(language: str) -> str:
     <textarea id="textInput" name="text" rows="8"></textarea>
     <footer>
       <div class="message" id="message"></div>
-      <button class="send" id="sendButton" type="button"></button>
+      <div class="actions">
+        <button class="action drop-send" id="dropSendLeftButton" type="button" data-apply-auto-enter="true"></button>
+        <button class="action drop-only" id="dropButton" type="button" data-apply-auto-enter="false"></button>
+        <button class="action drop-send" id="dropSendRightButton" type="button" data-apply-auto-enter="true"></button>
+      </div>
     </footer>
   </main>
   <script>
@@ -169,14 +193,20 @@ def render_mobile_page(language: str) -> str:
     const token = new URLSearchParams(window.location.search).get("token") || "";
     const input = document.getElementById("textInput");
     const clearButton = document.getElementById("clearButton");
-    const sendButton = document.getElementById("sendButton");
+    const actionButtons = Array.from(document.querySelectorAll("[data-apply-auto-enter]"));
     const status = document.getElementById("status");
     const statusText = document.getElementById("statusText");
     const message = document.getElementById("message");
     let isComposing = false;
 
     clearButton.textContent = labels.clear;
-    sendButton.textContent = labels.send;
+    function resetActionLabels() {{
+      for (const button of actionButtons) {{
+        button.textContent = button.dataset.applyAutoEnter === "true" ? labels.drop_and_send : labels.drop;
+      }}
+    }}
+
+    resetActionLabels();
     input.placeholder = labels.placeholder;
 
     function setConnected(isConnected) {{
@@ -231,9 +261,17 @@ def render_mobile_page(language: str) -> str:
       }}
     }}
 
-    async function sendText() {{
-      sendButton.disabled = true;
-      sendButton.textContent = labels.sending;
+    function setActionsDisabled(isDisabled) {{
+      for (const button of actionButtons) {{
+        button.disabled = isDisabled;
+      }}
+    }}
+
+    async function sendText(applyAutoEnter) {{
+      setActionsDisabled(true);
+      for (const button of actionButtons) {{
+        button.textContent = labels.sending;
+      }}
       showMessage("");
       try {{
         const connection = await checkConnection();
@@ -246,7 +284,7 @@ def render_mobile_page(language: str) -> str:
         const response = await fetchWithTimeout(`/api/send?token=${{encodeURIComponent(token)}}`, {{
           method: "POST",
           headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify({{ text }}),
+          body: JSON.stringify({{ text, apply_auto_enter: applyAutoEnter }}),
         }});
 
         if (response.ok) {{
@@ -268,8 +306,8 @@ def render_mobile_page(language: str) -> str:
         setConnected(false);
         showMessage(labels.send_failed);
       }} finally {{
-        sendButton.disabled = false;
-        sendButton.textContent = labels.send;
+        setActionsDisabled(false);
+        resetActionLabels();
       }}
     }}
 
@@ -283,7 +321,11 @@ def render_mobile_page(language: str) -> str:
     input.addEventListener("compositionend", () => {{
       isComposing = false;
     }});
-    sendButton.addEventListener("click", sendText);
+    for (const button of actionButtons) {{
+      button.addEventListener("click", () => {{
+        sendText(button.dataset.applyAutoEnter === "true");
+      }});
+    }}
     setConnected(false);
     checkConnection();
     setInterval(checkConnection, 5000);

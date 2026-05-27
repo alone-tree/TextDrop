@@ -67,8 +67,12 @@ def create_app(state: ServerState) -> FastAPI:
         if len(text.encode("utf-8")) > MAX_TEXT_BYTES:
             return JSONResponse({"ok": False, "error": "too_large"}, status_code=413)
 
+        apply_auto_enter = payload.get("apply_auto_enter", True)
+        if not isinstance(apply_auto_enter, bool):
+            return JSONResponse({"ok": False, "error": "bad_request"}, status_code=400)
+
         try:
-            auto_enter = state.get_auto_enter()
+            auto_enter = state.get_auto_enter() if apply_auto_enter else ""
             await asyncio.to_thread(state.paste_text, text, auto_enter)
         except Exception:
             return JSONResponse({"ok": False, "error": "paste_failed"}, status_code=500)
