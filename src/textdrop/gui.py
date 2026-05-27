@@ -47,7 +47,7 @@ from .server import LocalServer, ServerState
 from .tokens import generate_token
 
 
-APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1"
+APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1.2"
 NETWORK_CHECK_INTERVAL_MS = 3000
 CLIENT_CONNECTED_TTL_SECONDS = 12
 
