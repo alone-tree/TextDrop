@@ -101,6 +101,9 @@ class LocalServer:
         self._thread = threading.Thread(target=self._server.run, daemon=True)
         self._thread.start()
 
+    def is_running(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
+
     def stop(self) -> None:
         self._server.should_exit = True
         if self._thread and self._thread.is_alive():
