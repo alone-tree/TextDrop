@@ -71,12 +71,24 @@ def render_mobile_page(language: str) -> str:
       font-weight: 700;
       pointer-events: none;
     }}
-    .clear {{
+    .top-actions {{
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      max-width: 38%;
+    }}
+    .top-button {{
       border: 0;
       background: transparent;
       color: #72777f;
       font-size: 15px;
       padding: 8px 4px;
+      white-space: nowrap;
+    }}
+    .wake-lock.active {{
+      color: #1f7aec;
+      font-weight: 700;
     }}
     textarea {{
       width: 100%;
@@ -175,7 +187,10 @@ def render_mobile_page(language: str) -> str:
     <header class="topbar">
       <div class="status" id="status"><span class="dot"></span><span class="status-text" id="statusText"></span></div>
       <div class="title">TextDrop</div>
-      <button class="clear" id="clearButton" type="button"></button>
+      <div class="top-actions">
+        <button class="top-button wake-lock" id="wakeLockButton" type="button"></button>
+        <button class="top-button clear" id="clearButton" type="button"></button>
+      </div>
     </header>
     <textarea id="textInput" name="text" rows="8"></textarea>
     <footer>
@@ -192,13 +207,18 @@ def render_mobile_page(language: str) -> str:
     const timeoutMs = 3000;
     const token = new URLSearchParams(window.location.search).get("token") || "";
     const input = document.getElementById("textInput");
+    const wakeLockButton = document.getElementById("wakeLockButton");
     const clearButton = document.getElementById("clearButton");
     const actionButtons = Array.from(document.querySelectorAll("[data-apply-auto-enter]"));
     const status = document.getElementById("status");
     const statusText = document.getElementById("statusText");
     const message = document.getElementById("message");
     let isComposing = false;
+    let wakeLock = null;
+    let wakeLockWanted = false;
+    let lastPointerActionAt = 0;
 
+    wakeLockButton.textContent = labels.wake_lock_off;
     clearButton.textContent = labels.clear;
     function resetActionLabels() {{
       for (const button of actionButtons) {{
@@ -216,6 +236,56 @@ def render_mobile_page(language: str) -> str:
 
     function showMessage(text) {{
       message.textContent = text || "";
+    }}
+
+    function updateWakeLockButton() {{
+      wakeLockButton.classList.toggle("active", Boolean(wakeLock));
+      wakeLockButton.textContent = wakeLock ? labels.wake_lock_on : labels.wake_lock_off;
+    }}
+
+    function keepInputFocused() {{
+      requestAnimationFrame(() => {{
+        input.focus({{ preventScroll: true }});
+      }});
+    }}
+
+    async function requestScreenWakeLock() {{
+      if (!wakeLockWanted || wakeLock || document.visibilityState !== "visible") {{
+        return false;
+      }}
+      if (!("wakeLock" in navigator)) {{
+        showMessage(labels.wake_lock_failed);
+        updateWakeLockButton();
+        return false;
+      }}
+      try {{
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => {{
+          wakeLock = null;
+          updateWakeLockButton();
+        }});
+        showMessage("");
+        updateWakeLockButton();
+        return true;
+      }} catch (_) {{
+        wakeLock = null;
+        showMessage(labels.wake_lock_failed);
+        updateWakeLockButton();
+        return false;
+      }}
+    }}
+
+    async function toggleWakeLock() {{
+      if (wakeLock) {{
+        wakeLockWanted = false;
+        const currentWakeLock = wakeLock;
+        wakeLock = null;
+        await currentWakeLock.release().catch(() => {{}});
+        updateWakeLockButton();
+        return;
+      }}
+      wakeLockWanted = true;
+      await requestScreenWakeLock();
     }}
 
     async function fetchWithTimeout(url, options = {{}}) {{
@@ -241,7 +311,6 @@ def render_mobile_page(language: str) -> str:
     }}
 
     async function readCommittedInput() {{
-      input.blur();
       if (isComposing) {{
         await wait(180);
       }}
@@ -308,25 +377,77 @@ def render_mobile_page(language: str) -> str:
       }} finally {{
         setActionsDisabled(false);
         resetActionLabels();
+        keepInputFocused();
+        requestScreenWakeLock();
       }}
     }}
 
-    clearButton.addEventListener("click", () => {{
+    function clearInput() {{
       input.value = "";
-      input.focus();
+      keepInputFocused();
+      requestScreenWakeLock();
+    }}
+    function bindTopButton(button, action) {{
+      button.addEventListener("pointerdown", (event) => {{
+        event.preventDefault();
+      }});
+      button.addEventListener("pointerup", (event) => {{
+        event.preventDefault();
+        lastPointerActionAt = Date.now();
+        action();
+      }});
+      button.addEventListener("click", (event) => {{
+        if (Date.now() - lastPointerActionAt < 500) {{
+          event.preventDefault();
+          return;
+        }}
+        action();
+      }});
+    }}
+    bindTopButton(wakeLockButton, () => {{
+      toggleWakeLock();
+      keepInputFocused();
     }});
+    bindTopButton(clearButton, clearInput);
+    input.addEventListener("focus", requestScreenWakeLock);
     input.addEventListener("compositionstart", () => {{
       isComposing = true;
     }});
     input.addEventListener("compositionend", () => {{
       isComposing = false;
     }});
+    function handleAction(button) {{
+      if (button.disabled) {{
+        return;
+      }}
+      keepInputFocused();
+      requestScreenWakeLock();
+      sendText(button.dataset.applyAutoEnter === "true");
+    }}
     for (const button of actionButtons) {{
-      button.addEventListener("click", () => {{
-        sendText(button.dataset.applyAutoEnter === "true");
+      button.addEventListener("pointerdown", (event) => {{
+        event.preventDefault();
+      }});
+      button.addEventListener("pointerup", (event) => {{
+        event.preventDefault();
+        lastPointerActionAt = Date.now();
+        handleAction(button);
+      }});
+      button.addEventListener("click", (event) => {{
+        if (Date.now() - lastPointerActionAt < 500) {{
+          event.preventDefault();
+          return;
+        }}
+        handleAction(button);
       }});
     }}
+    document.addEventListener("visibilitychange", () => {{
+      if (document.visibilityState === "visible") {{
+        requestScreenWakeLock();
+      }}
+    }});
     setConnected(false);
+    updateWakeLockButton();
     checkConnection();
     setInterval(checkConnection, 5000);
     updateKeyboardInset();

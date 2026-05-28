@@ -19,6 +19,7 @@ import asyncio
 import json
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 
 import uvicorn
@@ -86,17 +87,22 @@ def create_app(state: ServerState) -> FastAPI:
 
 
 class LocalServer:
-    def __init__(self, port: int, state: ServerState):
+    def __init__(self, port: int, state: ServerState, ssl_certfile: Path | None = None, ssl_keyfile: Path | None = None):
         self.port = port
+        config_kwargs = {
+            "app": create_app(state),
+            "host": "0.0.0.0",
+            "port": port,
+            "log_level": "warning",
+            "access_log": False,
+            "log_config": None,
+        }
+        if ssl_certfile and ssl_keyfile:
+            config_kwargs["ssl_certfile"] = str(ssl_certfile)
+            config_kwargs["ssl_keyfile"] = str(ssl_keyfile)
+
         self._server = uvicorn.Server(
-            uvicorn.Config(
-                create_app(state),
-                host="0.0.0.0",
-                port=port,
-                log_level="warning",
-                access_log=False,
-                log_config=None,
-            )
+            uvicorn.Config(**config_kwargs)
         )
         self._thread: threading.Thread | None = None
 
