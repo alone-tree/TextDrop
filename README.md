@@ -44,6 +44,10 @@ Windows 主界面的状态会显示手机是否已连接。手机页面用有效
 
 ## 开发运行
 
+双击根目录的 `start-dev.cmd` 可以直接启动源码开发版。脚本会自动创建 `.venv`，安装当前源码，然后运行 TextDrop。
+
+也可以手动执行：
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1

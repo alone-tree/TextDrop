@@ -71,12 +71,24 @@ def render_mobile_page(language: str) -> str:
       font-weight: 700;
       pointer-events: none;
     }}
-    .clear {{
+    .top-actions {{
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: 38%;
+    }}
+    .top-button {{
       border: 0;
       background: transparent;
       color: #72777f;
       font-size: 15px;
       padding: 8px 4px;
+      white-space: nowrap;
+    }}
+    .top-button.active {{
+      color: #1f7aec;
+      font-weight: 700;
     }}
     textarea {{
       width: 100%;
@@ -168,6 +180,30 @@ def render_mobile_page(language: str) -> str:
       color: #b42318;
       text-align: center;
     }}
+    .toast-backdrop {{
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(17, 19, 23, 0.08);
+    }}
+    .toast-backdrop.show {{
+      display: flex;
+    }}
+    .toast {{
+      max-width: 320px;
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #111317;
+      color: #ffffff;
+      font-size: 15px;
+      line-height: 1.45;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(17, 19, 23, 0.24);
+    }}
   </style>
 </head>
 <body>
@@ -175,7 +211,10 @@ def render_mobile_page(language: str) -> str:
     <header class="topbar">
       <div class="status" id="status"><span class="dot"></span><span class="status-text" id="statusText"></span></div>
       <div class="title">TextDrop</div>
-      <button class="clear" id="clearButton" type="button"></button>
+      <div class="top-actions">
+        <button class="top-button" id="keepAwakeButton" type="button"></button>
+        <button class="top-button" id="clearButton" type="button"></button>
+      </div>
     </header>
     <textarea id="textInput" name="text" rows="8"></textarea>
     <footer>
@@ -187,18 +226,28 @@ def render_mobile_page(language: str) -> str:
       </div>
     </footer>
   </main>
+  <div class="toast-backdrop" id="toastBackdrop">
+    <div class="toast" id="toast"></div>
+  </div>
   <script>
     const labels = {label_json};
     const timeoutMs = 3000;
     const token = new URLSearchParams(window.location.search).get("token") || "";
     const input = document.getElementById("textInput");
+    const keepAwakeButton = document.getElementById("keepAwakeButton");
     const clearButton = document.getElementById("clearButton");
     const actionButtons = Array.from(document.querySelectorAll("[data-apply-auto-enter]"));
     const status = document.getElementById("status");
     const statusText = document.getElementById("statusText");
     const message = document.getElementById("message");
+    const toastBackdrop = document.getElementById("toastBackdrop");
+    const toast = document.getElementById("toast");
     let isComposing = false;
+    let wakeLock = null;
+    let wantsWakeLock = false;
+    let toastTimer = 0;
 
+    keepAwakeButton.textContent = labels.keep_awake;
     clearButton.textContent = labels.clear;
     function resetActionLabels() {{
       for (const button of actionButtons) {{
@@ -216,6 +265,57 @@ def render_mobile_page(language: str) -> str:
 
     function showMessage(text) {{
       message.textContent = text || "";
+    }}
+
+    function showToast(text) {{
+      toast.textContent = text;
+      toastBackdrop.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 3000);
+    }}
+
+    function hideToast() {{
+      toastBackdrop.classList.remove("show");
+      clearTimeout(toastTimer);
+      toastTimer = 0;
+    }}
+
+    function refreshWakeLockButton() {{
+      keepAwakeButton.classList.toggle("active", Boolean(wakeLock));
+    }}
+
+    async function requestWakeLock() {{
+      if (!("wakeLock" in navigator)) {{
+        throw new Error("wake lock unavailable");
+      }}
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {{
+        wakeLock = null;
+        refreshWakeLockButton();
+      }});
+      refreshWakeLockButton();
+    }}
+
+    async function enableWakeLock() {{
+      wantsWakeLock = true;
+      try {{
+        await requestWakeLock();
+      }} catch (_) {{
+        wantsWakeLock = false;
+        wakeLock = null;
+        refreshWakeLockButton();
+        showToast(labels.keep_awake_failed);
+      }}
+    }}
+
+    async function disableWakeLock() {{
+      wantsWakeLock = false;
+      if (wakeLock) {{
+        const lock = wakeLock;
+        wakeLock = null;
+        await lock.release().catch(() => {{}});
+      }}
+      refreshWakeLockButton();
     }}
 
     async function fetchWithTimeout(url, options = {{}}) {{
@@ -315,6 +415,15 @@ def render_mobile_page(language: str) -> str:
       input.value = "";
       input.focus();
     }});
+    keepAwakeButton.addEventListener("click", () => {{
+      if (wakeLock) {{
+        disableWakeLock();
+      }} else {{
+        enableWakeLock();
+      }}
+    }});
+    toastBackdrop.addEventListener("click", hideToast);
+    toast.addEventListener("click", event => event.stopPropagation());
     input.addEventListener("compositionstart", () => {{
       isComposing = true;
     }});
@@ -331,6 +440,11 @@ def render_mobile_page(language: str) -> str:
     setInterval(checkConnection, 5000);
     updateKeyboardInset();
     window.addEventListener("resize", updateKeyboardInset);
+    document.addEventListener("visibilitychange", () => {{
+      if (document.visibilityState === "visible" && wantsWakeLock && !wakeLock) {{
+        enableWakeLock();
+      }}
+    }});
     if (window.visualViewport) {{
       window.visualViewport.addEventListener("resize", updateKeyboardInset);
       window.visualViewport.addEventListener("scroll", updateKeyboardInset);

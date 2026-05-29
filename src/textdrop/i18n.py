@@ -40,6 +40,8 @@ TEXT = {
         "address_refreshed": "手机访问地址已刷新，请重新扫码连接。",
         "service_restarted": "本地服务已恢复，请重新扫码连接。",
         "clear": "清空",
+        "keep_awake": "常亮",
+        "keep_awake_failed": "当前浏览器或连接环境不支持屏幕常亮，请调长手机自动锁屏时间。",
         "send": "发送到电脑",
         "drop": "投递",
         "drop_and_send": "投递并发送",
@@ -78,6 +80,8 @@ TEXT = {
         "address_refreshed": "Phone URL refreshed. Scan the QR code again.",
         "service_restarted": "Local service recovered. Scan the QR code again.",
         "clear": "Clear",
+        "keep_awake": "Awake",
+        "keep_awake_failed": "Keep-awake is not supported in this browser or connection. Increase your phone auto-lock time.",
         "send": "Send to computer",
         "drop": "Drop",
         "drop_and_send": "Drop & Send",
@@ -111,6 +115,8 @@ def mobile_labels(language: str | None) -> dict[str, str]:
     lang = normalize_language(language)
     keys = [
         "clear",
+        "keep_awake",
+        "keep_awake_failed",
         "send",
         "drop",
         "drop_and_send",
