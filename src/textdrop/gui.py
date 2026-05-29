@@ -30,7 +30,6 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -99,9 +98,7 @@ class MainWindow(QMainWindow):
         self.use_https_checkbox = QCheckBox()
         self.use_https_label = QLabel()
         self.security_tip_label = QLabel()
-        self.url_edit = QLineEdit()
         self.qr_label = QLabel()
-        self.token_value = QLabel()
         self.copy_button = QPushButton()
         self.refresh_token_button = QPushButton()
         self.exit_button = QPushButton()
@@ -138,28 +135,31 @@ class MainWindow(QMainWindow):
 
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        root.addLayout(form)
+        form_wrapper = QHBoxLayout()
+        form_wrapper.addStretch(1)
+        form_wrapper.addLayout(form)
+        form_wrapper.addStretch(1)
+        root.addLayout(form_wrapper)
 
         self.status_label = QLabel()
         self.language_label = QLabel()
         self.auto_enter_label = QLabel()
         self.address_choice_label = QLabel()
         self.use_https_label = QLabel()
-        self.access_url_label = QLabel()
-        self.token_label = QLabel()
-
         form.addRow(self.status_label, self.status_value)
         form.addRow(self.language_label, self.language_combo)
         form.addRow(self.auto_enter_label, self.auto_enter_combo)
         form.addRow(self.address_choice_label, self.address_combo)
         form.addRow(self.use_https_label, self.use_https_checkbox)
 
-        self.url_edit.setReadOnly(True)
-        form.addRow(self.access_url_label, self.url_edit)
-        form.addRow(self.token_label, self.token_value)
+        self.status_value.setFixedWidth(240)
+        self.language_combo.setFixedWidth(240)
+        self.auto_enter_combo.setFixedWidth(240)
+        self.address_combo.setFixedWidth(240)
 
         self.notice_label.setWordWrap(True)
         self.notice_label.setStyleSheet("color: #185abc;")
+        self.notice_label.hide()
         root.addWidget(self.notice_label)
 
         self.security_tip_label.setWordWrap(True)
@@ -188,7 +188,7 @@ class MainWindow(QMainWindow):
         self.use_https_checkbox.blockSignals(False)
 
         self.setCentralWidget(central)
-        self.resize(560, 640)
+        self.resize(560, 520)
 
     def _connect_events(self) -> None:
         self.language_combo.currentIndexChanged.connect(self._on_language_changed)
@@ -238,10 +238,7 @@ class MainWindow(QMainWindow):
         self.language_label.setText(f"{tr(language, 'language_label')}:")
         self.address_choice_label.setText(f"{tr(language, 'address_choice_label')}:")
         self.use_https_label.setText(f"{tr(language, 'use_https_label')}:")
-        self.access_url_label.setText(f"{tr(language, 'access_url_label')}:")
-        self.token_label.setText(f"{tr(language, 'token_label')}:")
         self.auto_enter_label.setText(f"{tr(language, 'auto_enter_label')}:")
-        self.token_value.setText(tr(language, "token_enabled"))
         self.copy_button.setText(tr(language, "copy_address"))
         self.refresh_token_button.setText(tr(language, "refresh_token"))
         self.exit_button.setText(tr(language, "exit"))
@@ -253,7 +250,6 @@ class MainWindow(QMainWindow):
 
     def _refresh_address_view(self) -> None:
         url = self._access_url()
-        self.url_edit.setText(url)
         pixmap = QPixmap()
         pixmap.loadFromData(make_qr_png(url), "PNG")
         self.qr_label.setPixmap(
@@ -335,10 +331,12 @@ class MainWindow(QMainWindow):
 
     def _show_notice(self, key: str) -> None:
         self.notice_label.setText(tr(self.config.language, key))
+        self.notice_label.show()
 
     def _mark_client_connected(self) -> None:
         with self._lock:
             self._last_client_seen = time.monotonic()
+        self.notice_label.hide()
 
     def _clear_client_connection(self) -> None:
         with self._lock:
@@ -366,6 +364,7 @@ class MainWindow(QMainWindow):
             save_config(self.config)
         self._apply_language()
         self._fill_auto_enter_combo()
+        self._refresh_address_view()
 
     def _on_auto_enter_changed(self) -> None:
         auto_enter = self.auto_enter_combo.currentData()

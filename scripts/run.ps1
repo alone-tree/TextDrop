@@ -7,12 +7,5 @@
 
 $ErrorActionPreference = "Stop"
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-  throw "uv was not found. Install uv first: https://docs.astral.sh/uv/"
-}
-
-if (-not $env:UV_LINK_MODE) {
-  $env:UV_LINK_MODE = "copy"
-}
-
-uv run python -m textdrop
+.\.venv\Scripts\Activate.ps1
+python -m textdrop

@@ -218,7 +218,7 @@ def render_mobile_page(language: str) -> str:
     let wakeLockWanted = false;
     let lastPointerActionAt = 0;
 
-    wakeLockButton.textContent = labels.wake_lock_off;
+    wakeLockButton.textContent = labels.wake_lock;
     clearButton.textContent = labels.clear;
     function resetActionLabels() {{
       for (const button of actionButtons) {{
@@ -240,7 +240,7 @@ def render_mobile_page(language: str) -> str:
 
     function updateWakeLockButton() {{
       wakeLockButton.classList.toggle("active", Boolean(wakeLock));
-      wakeLockButton.textContent = wakeLock ? labels.wake_lock_on : labels.wake_lock_off;
+      wakeLockButton.textContent = labels.wake_lock;
     }}
 
     function keepInputFocused() {{

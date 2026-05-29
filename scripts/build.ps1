@@ -19,14 +19,6 @@ $releaseName = "TextDrop-v0.1.2-windows"
 $releaseDir = Join-Path "dist" $releaseName
 $zipPath = Join-Path "dist" "$releaseName.zip"
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-  throw "uv was not found. Install uv first: https://docs.astral.sh/uv/"
-}
-
-if (-not $env:UV_LINK_MODE) {
-  $env:UV_LINK_MODE = "copy"
-}
-
 if (Test-Path $releaseDir) {
   Remove-Item -Recurse -Force $releaseDir
 }
@@ -35,7 +27,7 @@ if (Test-Path $zipPath) {
   Remove-Item -Force $zipPath
 }
 
-uv run --group build python -m PyInstaller `
+.\.venv\Scripts\python.exe -m PyInstaller `
   --name TextDrop `
   --onedir `
   --windowed `

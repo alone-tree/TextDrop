@@ -24,11 +24,15 @@ import psutil
 
 EXCLUDED_INTERFACE_KEYWORDS = (
     "bluetooth",
+    "cfw",
+    "clash",
     "container",
     "docker",
     "hyper-v",
     "isatap",
     "loopback",
+    "meta",
+    "mihomo",
     "npcap",
     "tap",
     "teredo",
@@ -121,6 +125,8 @@ def _is_usable_ipv4(value: str) -> bool:
         or ip.is_multicast
         or ip.is_unspecified
         or value.startswith("169.254.")
+        or value.startswith("198.18.")
+        or value.startswith("198.19.")
     )
 
 

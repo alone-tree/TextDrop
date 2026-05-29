@@ -18,10 +18,6 @@ dependencies = [
     "pyperclip",
     "pyautogui",
     "cryptography",
-]
-
-[dependency-groups]
-build = [
     "pyinstaller",
 ]
 
