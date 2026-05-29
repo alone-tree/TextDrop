@@ -48,7 +48,7 @@ from .tls import ensure_tls_certificate
 from .tokens import generate_token
 
 
-APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1.2"
+APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1.3"
 NETWORK_CHECK_INTERVAL_MS = 3000
 CLIENT_CONNECTED_TTL_SECONDS = 12
 
@@ -168,9 +168,13 @@ class MainWindow(QMainWindow):
         )
         root.addWidget(self.security_tip_label)
 
+        root.addStretch(1)
+
         self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.qr_label.setMinimumSize(240, 240)
         root.addWidget(self.qr_label)
+
+        root.addSpacing(12)
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
@@ -188,7 +192,8 @@ class MainWindow(QMainWindow):
         self.use_https_checkbox.blockSignals(False)
 
         self.setCentralWidget(central)
-        self.resize(560, 520)
+        self.setMinimumSize(380, 560)
+        self.resize(560, 620)
 
     def _connect_events(self) -> None:
         self.language_combo.currentIndexChanged.connect(self._on_language_changed)

@@ -10,7 +10,7 @@ TextDrop 是一个轻量级跨设备输入工具。用户可以在手机浏览�
 - 手机端提供“投递”和“投递并发送”两种按钮。“投递”只粘贴文本；“投递并发送”会在粘贴后按 Windows 主界面配置的追加按键（Enter / Ctrl+Enter / Shift+Enter / Alt+Enter，默认关闭）。
 - 不保存发送历史，不记录正文，不恢复原剪贴板。
 - 不做云端连接、账号系统、托盘常驻和开机自启。
-- v0.1.2 只支持同一局域网内使用，跨网络的云端支持后期根据需求上线。
+- v0.1.3 只支持同一局域网内使用，跨网络的云端支持后期根据需求上线。
 
 ![1779885310726](image/README/1779885310726.png)
 
@@ -67,8 +67,8 @@ python -m textdrop
 
 打包产物会生成：
 
-- `dist\TextDrop-v0.1.2-windows\TextDrop\TextDrop.exe`
-- `dist\TextDrop-v0.1.2-windows.zip`
+- `dist\TextDrop-v0.1.3-windows\TextDrop\TextDrop.exe`
+- `dist\TextDrop-v0.1.3-windows.zip`
 
 打包前需要先关闭正在运行的 TextDrop，否则 Windows 可能占用 `dist` 目录中的依赖文件，导致构建脚本无法删除旧产物。
 
