@@ -18,6 +18,7 @@
 - 手机页面体验：看 `src/textdrop/mobile_page.py`
 - 本地 API 和服务启动：看 `src/textdrop/server.py`
 - 配置保存：看 `src/textdrop/config.py`
+- TLS/HTTPS 证书：看 `src/textdrop/tls.py`
 - 地址选择和端口探测：看 `src/textdrop/network.py`
 - 粘贴行为：看 `src/textdrop/paste.py`
 - 文案和语言：看 `src/textdrop/i18n.py`
@@ -35,6 +36,7 @@
 - 不要随意改变文本处理语义；如果要 trim、改写、追加换行或自动按键，必须先确认需求。
 - 手机端输入框要尽量保持原生简单，避免破坏手机输入法、语音输入和组合输入。
 - 涉及打包时，不要假设单文件 exe 是目标；先看 README 和开发日志里的当前发布方式。
+- **打包前必须提升版本号**：检查 `pyproject.toml`、`src/textdrop/__init__.py`、`src/textdrop/gui.py`（`APP_USER_MODEL_ID`）、`scripts/build.ps1`（`$releaseName`）和 `README.md` 中的版本引用，至少比已发布的最新版本高一个补丁号（如 `0.1.2` → `0.1.3`）。禁止直接覆盖已发布版本的产物。
 
 ## 修改后必须同步
 
@@ -52,7 +54,7 @@
 1. 至少运行：
 
 ```powershell
-python -m compileall src
+.\.venv\Scripts\python.exe -m compileall src
 ```
 
 2. 如果改了服务或 API，做 `/api/health` 和 `/api/send` 冒烟测试。测试发送时用 stub 替代真实粘贴，避免误触发 `Ctrl+V`。
@@ -62,7 +64,8 @@ python -m compileall src
    - 键盘弹起时发送按钮位置
    - 发送成功清空
    - 发送失败保留
-4. 如果改了打包，运行打包脚本，并从实际产物路径启动测试。
+   - 常亮按钮（HTTP 下提示不支持，HTTPS 下可激活）
+4. 如果改了打包，运行 `.\scripts\build.ps1`，并从实际产物路径启动测试。
 
 ## 常见坑
 
@@ -72,3 +75,6 @@ python -m compileall src
 - 地址自动选择只能做启发式判断，多网卡/VPN/虚拟网卡场景需要给用户兜底。
 - `TextDrop.exe` 如果依赖同目录资源，不要让用户单独移动 exe。
 - PyInstaller 图标需要 `.ico`。如果替换图标，优先从透明 PNG 生成多尺寸 ico，再更新打包脚本。
+- `navigator.wakeLock` 是浏览器安全 API，仅在安全上下文（HTTPS 或 localhost）下可用。HTTP 局域网访问时必然失败，需要给用户清晰的降级提示。
+- TLS 证书在应用启动时生成，使用 `cryptography` 库。修改证书生成逻辑时注意 SAN 必须覆盖所有可能的局域网地址（含 IP 和 localhost）。
+- `cryptography` 是编译型依赖，打包后约增加 5-10 MB。如果未来移除 HTTPS 功能，可同时移除此依赖。

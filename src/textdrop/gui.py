@@ -25,11 +25,11 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -44,6 +44,7 @@ from .network import AddressCandidate, choose_address, find_available_port, list
 from .paste import paste_text
 from .qr import make_qr_png
 from .server import LocalServer, ServerState
+from .tls import ensure_tls_certificate
 from .tokens import generate_token
 
 
@@ -79,6 +80,7 @@ class MainWindow(QMainWindow):
         self.candidates = list_address_candidates()
         self.selected_address = choose_address(self.candidates, self.config.selected_address)
         self.port = find_available_port(DEFAULT_PORT)
+        self.tls_paths, _ = ensure_tls_certificate(self._tls_hosts())
         self.server_state = ServerState(
             get_token=self._get_token,
             get_language=self._get_language,
@@ -86,16 +88,17 @@ class MainWindow(QMainWindow):
             paste_text=paste_text,
             mark_client_connected=self._mark_client_connected,
         )
-        self.server = LocalServer(self.port, self.server_state)
+        self.server = self._create_server()
 
         self.status_value = QLabel()
         self.notice_label = QLabel()
         self.language_combo = QComboBox()
         self.auto_enter_combo = QComboBox()
         self.address_combo = QComboBox()
-        self.url_edit = QLineEdit()
+        self.use_https_checkbox = QCheckBox()
+        self.use_https_label = QLabel()
+        self.security_tip_label = QLabel()
         self.qr_label = QLabel()
-        self.token_value = QLabel()
         self.copy_button = QPushButton()
         self.refresh_token_button = QPushButton()
         self.exit_button = QPushButton()
@@ -132,27 +135,38 @@ class MainWindow(QMainWindow):
 
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        root.addLayout(form)
+        form_wrapper = QHBoxLayout()
+        form_wrapper.addStretch(1)
+        form_wrapper.addLayout(form)
+        form_wrapper.addStretch(1)
+        root.addLayout(form_wrapper)
 
         self.status_label = QLabel()
         self.language_label = QLabel()
         self.auto_enter_label = QLabel()
         self.address_choice_label = QLabel()
-        self.access_url_label = QLabel()
-        self.token_label = QLabel()
-
+        self.use_https_label = QLabel()
         form.addRow(self.status_label, self.status_value)
         form.addRow(self.language_label, self.language_combo)
         form.addRow(self.auto_enter_label, self.auto_enter_combo)
         form.addRow(self.address_choice_label, self.address_combo)
+        form.addRow(self.use_https_label, self.use_https_checkbox)
 
-        self.url_edit.setReadOnly(True)
-        form.addRow(self.access_url_label, self.url_edit)
-        form.addRow(self.token_label, self.token_value)
+        self.status_value.setFixedWidth(240)
+        self.language_combo.setFixedWidth(240)
+        self.auto_enter_combo.setFixedWidth(240)
+        self.address_combo.setFixedWidth(240)
 
         self.notice_label.setWordWrap(True)
         self.notice_label.setStyleSheet("color: #185abc;")
+        self.notice_label.hide()
         root.addWidget(self.notice_label)
+
+        self.security_tip_label.setWordWrap(True)
+        self.security_tip_label.setStyleSheet(
+            "color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; padding: 8px;"
+        )
+        root.addWidget(self.security_tip_label)
 
         self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.qr_label.setMinimumSize(240, 240)
@@ -168,13 +182,19 @@ class MainWindow(QMainWindow):
         self._fill_language_combo()
         self._fill_auto_enter_combo()
         self._fill_address_combo()
+
+        self.use_https_checkbox.blockSignals(True)
+        self.use_https_checkbox.setChecked(self.config.use_https)
+        self.use_https_checkbox.blockSignals(False)
+
         self.setCentralWidget(central)
-        self.resize(560, 620)
+        self.resize(560, 520)
 
     def _connect_events(self) -> None:
         self.language_combo.currentIndexChanged.connect(self._on_language_changed)
         self.auto_enter_combo.currentIndexChanged.connect(self._on_auto_enter_changed)
         self.address_combo.currentIndexChanged.connect(self._on_address_changed)
+        self.use_https_checkbox.toggled.connect(self._on_use_https_changed)
         self.copy_button.clicked.connect(self._copy_address)
         self.refresh_token_button.clicked.connect(self._confirm_refresh_token)
         self.exit_button.clicked.connect(self.close)
@@ -217,32 +237,36 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"{tr(language, 'status_label')}:")
         self.language_label.setText(f"{tr(language, 'language_label')}:")
         self.address_choice_label.setText(f"{tr(language, 'address_choice_label')}:")
-        self.access_url_label.setText(f"{tr(language, 'access_url_label')}:")
-        self.token_label.setText(f"{tr(language, 'token_label')}:")
+        self.use_https_label.setText(f"{tr(language, 'use_https_label')}:")
         self.auto_enter_label.setText(f"{tr(language, 'auto_enter_label')}:")
-        self.token_value.setText(tr(language, "token_enabled"))
         self.copy_button.setText(tr(language, "copy_address"))
         self.refresh_token_button.setText(tr(language, "refresh_token"))
         self.exit_button.setText(tr(language, "exit"))
         self._refresh_connection_status()
 
     def _access_url(self) -> str:
-        return f"http://{self.selected_address}:{self.port}/?token={self.config.token}"
+        protocol = "https" if self.config.use_https else "http"
+        return f"{protocol}://{self.selected_address}:{self.port}/?token={self.config.token}"
 
     def _refresh_address_view(self) -> None:
         url = self._access_url()
-        self.url_edit.setText(url)
         pixmap = QPixmap()
         pixmap.loadFromData(make_qr_png(url), "PNG")
         self.qr_label.setPixmap(
             pixmap.scaled(240, 240, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         )
+        if self.config.use_https:
+            self.security_tip_label.setText(tr(self.config.language, "security_tip"))
+            self.security_tip_label.show()
+        else:
+            self.security_tip_label.hide()
 
     def _check_network_state(self) -> None:
         if not self.server.is_running():
             self._clear_client_connection()
             self.port = find_available_port(DEFAULT_PORT)
-            self.server = LocalServer(self.port, self.server_state)
+            self._ensure_tls_certificate()
+            self.server = self._create_server()
             self.server.start()
             self._refresh_address_view()
             self._show_notice("service_restarted")
@@ -253,6 +277,8 @@ class MainWindow(QMainWindow):
             if self._candidate_addresses(candidates) != self._candidate_addresses(self.candidates):
                 self.candidates = candidates
                 self._fill_address_combo()
+                if self._ensure_tls_certificate():
+                    self._restart_server()
             self._refresh_connection_status()
             return
 
@@ -263,6 +289,8 @@ class MainWindow(QMainWindow):
             return
 
         self._fill_address_combo()
+        self._ensure_tls_certificate()
+        self._restart_server()
         self._clear_client_connection()
         self._save_selected_address()
         self._refresh_address_view()
@@ -272,12 +300,43 @@ class MainWindow(QMainWindow):
     def _candidate_addresses(self, candidates: list[AddressCandidate]) -> list[str]:
         return [candidate.address for candidate in candidates]
 
+    def _tls_hosts(self) -> list[str]:
+        return [candidate.address for candidate in self.candidates] + [self.selected_address]
+
+    def _ensure_tls_certificate(self) -> bool:
+        self.tls_paths, changed = ensure_tls_certificate(self._tls_hosts())
+        return changed
+
+    def _create_server(self) -> LocalServer:
+        if self.config.use_https:
+            return LocalServer(
+                self.port,
+                self.server_state,
+                ssl_certfile=self.tls_paths.certfile,
+                ssl_keyfile=self.tls_paths.keyfile,
+            )
+        else:
+            return LocalServer(
+                self.port,
+                self.server_state,
+                ssl_certfile=None,
+                ssl_keyfile=None,
+            )
+
+    def _restart_server(self) -> None:
+        self.server.stop()
+        self.server = self._create_server()
+        self.server.start()
+        self._clear_client_connection()
+
     def _show_notice(self, key: str) -> None:
         self.notice_label.setText(tr(self.config.language, key))
+        self.notice_label.show()
 
     def _mark_client_connected(self) -> None:
         with self._lock:
             self._last_client_seen = time.monotonic()
+        self.notice_label.hide()
 
     def _clear_client_connection(self) -> None:
         with self._lock:
@@ -305,6 +364,7 @@ class MainWindow(QMainWindow):
             save_config(self.config)
         self._apply_language()
         self._fill_auto_enter_combo()
+        self._refresh_address_view()
 
     def _on_auto_enter_changed(self) -> None:
         auto_enter = self.auto_enter_combo.currentData()
@@ -321,6 +381,18 @@ class MainWindow(QMainWindow):
         self.selected_address = address
         self._clear_client_connection()
         self._save_selected_address()
+        self._refresh_address_view()
+        self._refresh_connection_status()
+
+    def _on_use_https_changed(self) -> None:
+        use_https = self.use_https_checkbox.isChecked()
+        if use_https == self.config.use_https:
+            return
+        with self._lock:
+            self.config.use_https = use_https
+            save_config(self.config)
+        self._ensure_tls_certificate()
+        self._restart_server()
         self._refresh_address_view()
         self._refresh_connection_status()
 
@@ -371,3 +443,4 @@ def run_gui() -> int:
     window = MainWindow()
     window.show()
     return app.exec()
+

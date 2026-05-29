@@ -27,7 +27,7 @@ if (Test-Path $zipPath) {
   Remove-Item -Force $zipPath
 }
 
-python -m PyInstaller `
+.\.venv\Scripts\python.exe -m PyInstaller `
   --name TextDrop `
   --onedir `
   --windowed `

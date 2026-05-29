@@ -17,6 +17,7 @@ dependencies = [
     "psutil",
     "pyperclip",
     "pyautogui",
+    "cryptography",
     "pyinstaller",
 ]
 

@@ -30,12 +30,17 @@ class AppConfig:
     language: str = "zh"
     selected_address: str | None = None
     auto_enter: str = ""
+    use_https: bool = False
 
 
 def config_path() -> Path:
+    return config_dir_path() / CONFIG_FILE_NAME
+
+
+def config_dir_path() -> Path:
     appdata = os.environ.get("APPDATA")
     base = Path(appdata) if appdata else Path.home() / ".config"
-    return base / CONFIG_DIR_NAME / CONFIG_FILE_NAME
+    return base / CONFIG_DIR_NAME
 
 
 def load_config() -> AppConfig:
@@ -50,7 +55,14 @@ def load_config() -> AppConfig:
     language = data.get("language") if data.get("language") in {"zh", "en"} else "zh"
     selected_address = data.get("selected_address")
     auto_enter = data.get("auto_enter", "")
-    return AppConfig(token=token, language=language, selected_address=selected_address, auto_enter=auto_enter)
+    use_https = bool(data.get("use_https", False))
+    return AppConfig(
+        token=token,
+        language=language,
+        selected_address=selected_address,
+        auto_enter=auto_enter,
+        use_https=use_https,
+    )
 
 
 def save_config(config: AppConfig) -> None:
@@ -60,4 +72,3 @@ def save_config(config: AppConfig) -> None:
         json.dumps(asdict(config), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-
