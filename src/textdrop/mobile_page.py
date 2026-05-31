@@ -180,6 +180,30 @@ def render_mobile_page(language: str) -> str:
       color: #b42318;
       text-align: center;
     }}
+    .toast-backdrop {{
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(17, 19, 23, 0.08);
+    }}
+    .toast-backdrop.show {{
+      display: flex;
+    }}
+    .toast {{
+      max-width: 320px;
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #111317;
+      color: #ffffff;
+      font-size: 15px;
+      line-height: 1.45;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(17, 19, 23, 0.24);
+    }}
   </style>
 </head>
 <body>
@@ -202,6 +226,9 @@ def render_mobile_page(language: str) -> str:
       </div>
     </footer>
   </main>
+  <div class="toast-backdrop" id="toastBackdrop">
+    <div class="toast" id="toast"></div>
+  </div>
   <script>
     const labels = {label_json};
     const timeoutMs = 3000;
@@ -238,6 +265,26 @@ def render_mobile_page(language: str) -> str:
       message.textContent = text || "";
     }}
 
+    let toastTimer = 0;
+    const toastBackdrop = document.getElementById("toastBackdrop");
+    const toast = document.getElementById("toast");
+
+    function showToast(text) {{
+      toast.textContent = text;
+      toastBackdrop.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 3000);
+    }}
+
+    function hideToast() {{
+      toastBackdrop.classList.remove("show");
+      clearTimeout(toastTimer);
+      toastTimer = 0;
+    }}
+
+    toastBackdrop.addEventListener("click", hideToast);
+    toast.addEventListener("click", (event) => event.stopPropagation());
+
     function updateWakeLockButton() {{
       wakeLockButton.classList.toggle("active", Boolean(wakeLock));
       wakeLockButton.textContent = labels.wake_lock;
@@ -254,7 +301,8 @@ def render_mobile_page(language: str) -> str:
         return false;
       }}
       if (!("wakeLock" in navigator)) {{
-        showMessage(labels.wake_lock_failed);
+        wakeLockWanted = false;
+        showToast(labels.wake_lock_failed);
         updateWakeLockButton();
         return false;
       }}
@@ -269,7 +317,8 @@ def render_mobile_page(language: str) -> str:
         return true;
       }} catch (_) {{
         wakeLock = null;
-        showMessage(labels.wake_lock_failed);
+        wakeLockWanted = false;
+        showToast(labels.wake_lock_failed);
         updateWakeLockButton();
         return false;
       }}
@@ -345,7 +394,7 @@ def render_mobile_page(language: str) -> str:
       try {{
         const connection = await checkConnection();
         if (!connection.ok) {{
-          showMessage(connection.error === "token_invalid" ? labels.token_invalid : labels.send_failed);
+          showToast(connection.error === "token_invalid" ? labels.token_invalid : labels.send_failed);
           return;
         }}
 
@@ -365,15 +414,15 @@ def render_mobile_page(language: str) -> str:
         setConnected(false);
         const data = await response.json().catch(() => ({{ error: "" }}));
         if (data.error === "token_invalid") {{
-          showMessage(labels.token_invalid);
+          showToast(labels.token_invalid);
         }} else if (data.error === "too_large") {{
-          showMessage(labels.too_large);
+          showToast(labels.too_large);
         }} else {{
-          showMessage(labels.send_failed);
+          showToast(labels.send_failed);
         }}
       }} catch (_) {{
         setConnected(false);
-        showMessage(labels.send_failed);
+        showToast(labels.send_failed);
       }} finally {{
         setActionsDisabled(false);
         resetActionLabels();
@@ -404,7 +453,7 @@ def render_mobile_page(language: str) -> str:
         action();
       }});
     }}
-    bindTopButton(wakeLockButton, () => {{
+    wakeLockButton.addEventListener("click", () => {{
       toggleWakeLock();
       keepInputFocused();
     }});

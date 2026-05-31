@@ -48,7 +48,7 @@ from .tls import ensure_tls_certificate
 from .tokens import generate_token
 
 
-APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.1.3"
+APP_USER_MODEL_ID = "TextDrop.TextDrop.v0.2.0"
 NETWORK_CHECK_INTERVAL_MS = 3000
 CLIENT_CONNECTED_TTL_SECONDS = 12
 

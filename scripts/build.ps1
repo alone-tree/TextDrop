@@ -15,7 +15,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$releaseName = "TextDrop-v0.1.3-windows"
+$releaseName = "TextDrop-v0.2.0-windows"
 $releaseDir = Join-Path "dist" $releaseName
 $zipPath = Join-Path "dist" "$releaseName.zip"
 
